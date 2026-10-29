@@ -1,0 +1,12 @@
+Kundenbrief — Musterfirma GmbH, Kundendienst
+Sehr geehrte Frau Dr. Müller,
+
+wir haben Ihre IBAN DE89 3704 0044 0532 0130 00 geprüft.
+Steuer-ID: 12345678995
+Versichertennummer: K127508150
+Telefon: +49 (0)30 12345678
+E-Mail: max.mustermann@example.org
+Wohnhaft: Marienstraße 12, 10117 Berlin
+Geburtsdatum: 15.08.1975
+
+Alle Angaben synthetisch (Prüfziffern gültig, Inhalte zufällig).

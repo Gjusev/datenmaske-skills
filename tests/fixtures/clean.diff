@@ -1,0 +1,11 @@
+diff --git a/src/util/math.ts b/src/util/math.ts
+index aaa0000..bbb1111 100644
+--- a/src/util/math.ts
++++ b/src/util/math.ts
+@@ -1,4 +1,7 @@
+ export function sum(a: number, b: number): number {
++  if (!Number.isFinite(a) || !Number.isFinite(b)) {
++    throw new TypeError("Zahlen erwartet");
++  }
+   return a + b;
+ }

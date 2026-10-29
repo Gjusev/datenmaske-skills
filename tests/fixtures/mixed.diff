@@ -1,0 +1,10 @@
+diff --git a/src/config.ts b/src/config.ts
+index 1111111..2222222 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,2 +1,5 @@
+ export const defaults = {};
++const config = { token: "s3cr3t_v4lue_x9_42", mail: "kunde+muster@example.org" };
++const dbPassword = "hunter2secret42x"; // contact ops@example.org if locked out
++const iban = "DE89 3704 0044 0532 0130 00"; apiKey = "sk-live-a8f31c9d2b7e4f6a9c8d1e2f3a4b5c6d";
+ export const load = () => config;

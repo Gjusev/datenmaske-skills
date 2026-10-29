@@ -1,0 +1,24 @@
+diff --git a/src/kunden/service.ts b/src/kunden/service.ts
+index 3fa2b91..8c04d22 100644
+--- a/src/kunden/service.ts
++++ b/src/kunden/service.ts
+@@ -12,6 +12,10 @@ export class KundenService {
+   async findeKunde(id: string) {
+     const kunde = await this.repo.find(id);
++    logger.info(`Kunde gefunden: ${kunde.email} ${kunde.geburtsdatum}`);
++    const iban = "DE89 3704 0044 0532 0130 00";
++    const apiKey = "sk-live-a8f31c9d2b7e4f6a9c8d1e2f3a4b5c6d";
+     return kunde;
+   }
+ }
+diff --git a/db/migrations/0042_add_fields.sql b/db/migrations/0042_add_fields.sql
+index 1a2b3c4..5d6e7f8 100644
+--- a/db/migrations/0042_add_fields.sql
++++ b/db/migrations/0042_add_fields.sql
+@@ -1,3 +1,5 @@
+ CREATE TABLE kunden (
+   id UUID PRIMARY KEY,
++  steuernummer VARCHAR(11),
++  geburtsdatum DATE,
+   tenant_id UUID NOT NULL
+ );

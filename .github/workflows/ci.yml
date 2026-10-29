@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9/3.10 are EOL and no longer built for current runner images
+        # (setup-python cannot install them on Ubuntu 26.04+). The code
+        # itself stays 3.9-compatible (future-annotations only).
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run test suite (unittest; pytest collects the same tests)
+        run: |
+          python3 -m unittest discover -s tests -t . -v
+
+  pytest-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: pytest runs the same suite (users may prefer pytest)
+        run: |
+          pip install pytest
+          pytest tests/ -q
