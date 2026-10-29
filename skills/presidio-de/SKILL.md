@@ -58,7 +58,9 @@ Exit codes (`scan_pii.py`): `0` clean, `1` findings at/above `--fail-on`
    PII itself. When reporting to the user, quote only file/line/type, or run
    with `--no-content`.
 4. **Respect confidence levels.** `confirmed` = checksum-validated
-   (IBAN, Steuer-ID, KVNR, KREDITKARTE, EMAIL) — treat as certain.
+   (IBAN, KVNR, KREDITKARTE, EMAIL) — treat as certain; the Steuer-ID is
+   `confirmed` only when checksum *and* issuance structure pass (a
+   checksum-valid number that was never issued that way is `likely`).
    `likely` = structural/context (phone, address, SVNR, Geburtsdatum,
    title-gated names). `weak` = format-only, opt-in via `--include-weak`.
    For a commit gate, act on `confirmed` + `likely`; treat `weak` as a hint,
@@ -77,7 +79,7 @@ Exit codes (`scan_pii.py`): `0` clean, `1` findings at/above `--fail-on`
 | Entity | Confidence | Method |
 | --- | --- | --- |
 | IBAN (SEPA/DE, spaced or compact) | confirmed | mod-97 checksum |
-| Steuer-Identifikationsnummer | confirmed | ISO 7064 MOD 11,10 + Bundesland code |
+| Steuer-Identifikationsnummer | confirmed* | ISO 7064 MOD 11,10 + issuance structure (randomly assigned — no Bundesland code); checksum-only matches → likely |
 | Krankenkassen-/Versichertennummer (KVNR) | confirmed | ISO 7064 via letter→digits |
 | Sozial-/Rentenversicherungsnummer (SVNR) | likely | birthdate plausibility |
 | Kreditkarte | confirmed | Luhn |

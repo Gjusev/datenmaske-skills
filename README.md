@@ -53,8 +53,8 @@ KVNR ISO 7064, Kreditkarte Luhn), kein Modell, keine Cloud:
 ```bash
 $ python3 .claude/skills/presidio-de/scripts/scan_pii.py kundenbrief.txt
 kundenbrief.txt:2:23  PERSON_NAME_DE[likely]  Müller
-kundenbrief.txt:4:11  IBAN[confirmed]  DE89 3704 0044 0532 0130 00
-kundenbrief.txt:5:12  STEUER_ID[confirmed]  02538413968
+kundenbrief.txt:4:21  IBAN[confirmed]  DE89 3704 0044 0532 0130 00
+kundenbrief.txt:5:12  STEUER_ID[confirmed]  12345678995
 kundenbrief.txt:6:21  KVNR[confirmed]  K127508150
 kundenbrief.txt:7:10  PHONE_DE[likely]  +49 (0)30 12345678
 kundenbrief.txt:8:9   EMAIL[confirmed]  max.mustermann@example.org
@@ -62,7 +62,8 @@ kundenbrief.txt:9:11  STREET_ADDRESS[likely]  Marienstraße 12
 kundenbrief.txt:9:28  PLZ_ORT[likely]  10117 Berlin
 kundenbrief.txt:10:1  GEBURTSDATUM[likely]  Geburtsdatum: 15.08.1975
 
-9 Treffer — EMAIL: 1, GEBURTSDATUM: 1, IBAN: 1, KVNR: 1, …
+9 Treffer — EMAIL: 1, GEBURTSDATUM: 1, IBAN: 1, KVNR: 1, PERSON_NAME_DE: 1,
+PHONE_DE: 1, PLZ_ORT: 1, STEUER_ID: 1, STREET_ADDRESS: 1
 ```
 
 ```bash
@@ -101,9 +102,9 @@ db/migrations/0042_add_fields.sql:3  [note] K5-Datenminimierung: personal-column
 3 riskant(e), 1 Hinweis(e) — Checklist-Items im Detail prüfen.
 ```
 
-Secrets werden vom Werkzeug nie mitausgegeben (auch nicht mit
-`--show-context` — maskiert bleibt maskiert, damit CI-Logs nicht zum
-Leck werden). `--fail-on-risky` macht daraus einen CI-Gate.
+Secrets und erkannte PII-Werte werden vom Werkzeug nie mitausgegeben
+(auch nicht mit `--show-context` — die Maskierung hängt am Zeileninhalt,
+nicht am Treffer, damit CI-Logs nicht zum Leck werden). `--fail-on-risky` macht daraus einen CI-Gate.
 
 ### 3. `redaction-ci` — Fake-PDF-Schwärzungen in CI abfangen
 
@@ -146,7 +147,7 @@ Daten“.
 python3 -m unittest discover -s tests -t .
 ```
 
-65 Tests, keine Abhängigkeiten. In CI (GitHub Actions) läuft dasselbe als
+75 Tests, keine Abhängigkeiten. In CI (GitHub Actions) läuft dasselbe als
 `pytest`-kompatible Suite.
 
 ## Verwandte Projekte

@@ -17,6 +17,11 @@ Placeholders are typed ([IBAN], [STEUER_ID], [NAME], …) so the redacted file
 stays readable and greppable for what was removed. With --keep-length the
 match is replaced by ● characters instead, preserving column widths in CSVs
 and layout in text.
+
+--out targets are planned before anything is written: a target that resolves
+to one of the inputs (e.g. `--out .`) or a basename collision between inputs
+(directories are flattened into DIR) aborts the run with exit 2 and writes
+nothing. Originals are only overwritten with an explicit --in-place.
 """
 
 from __future__ import annotations
@@ -92,13 +97,47 @@ def main(argv: list[str] | None = None) -> int:
 
     from scan_pii import iter_files, read_text_limited
 
-    files = iter_files([Path(p) for p in args.paths], [])
+    files = sorted(set(iter_files([Path(p) for p in args.paths], [])), key=str)
     if not files:
         print("redact_pii: nothing to do (no readable text files).", file=sys.stderr)
         return 0
 
+    # Plan every target up front: a broken invocation must not half-overwrite
+    # inputs or silently drop redacted copies.
+    if args.out:
+        out_dir = Path(args.out)
+        planned: list[tuple[Path, Path]] = []
+        seen: dict[Path, Path] = {}
+        errors: list[str] = []
+        for path in files:
+            target = out_dir / path.name
+            if target.resolve() == path.resolve():
+                errors.append(
+                    f"{path} -> {target}  (would overwrite the input; drop --out, "
+                    "add --in-place, or pick another DIR)"
+                )
+            elif target in seen:
+                errors.append(
+                    f"{seen[target]} and {path} -> {target}  (same basename; --out "
+                    "flattens directories — use unique names or separate DIRs)"
+                )
+            else:
+                seen[target] = path
+                planned.append((path, target))
+        if errors:
+            print("redact_pii: refusing to write --out targets — nothing was written:",
+                  file=sys.stderr)
+            for e in errors:
+                print(f"  {e}", file=sys.stderr)
+            return 2
+        out_dir.mkdir(parents=True, exist_ok=True)
+    elif args.in_place:
+        planned = [(path, path) for path in files]
+    else:
+        planned = [(path, path.with_name(path.name + args.suffix)) for path in files]
+
     total = 0
-    for path in files:
+    for path, target in planned:
         text = read_text_limited(path, args.max_file_bytes)
         if not text:
             print(f"redact_pii: skipping (binary, undecodable or oversized): {path}",
@@ -110,14 +149,6 @@ def main(argv: list[str] | None = None) -> int:
             names=not args.no_names,
             keep_length=args.keep_length,
         )
-        if args.in_place:
-            target = path
-        elif args.out:
-            out_dir = Path(args.out)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            target = out_dir / path.name
-        else:
-            target = path.with_name(path.name + args.suffix)
         if count:
             target.write_text(redacted, encoding="utf-8")
             total += count

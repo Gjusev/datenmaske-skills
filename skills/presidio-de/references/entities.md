@@ -14,13 +14,18 @@ exists, but random content, no real accounts, no real people.
 
 ### STEUER_ID (Steuer-Identifikationsnummer)
 - Format: 11 Ziffern, ohne Trennzeichen.
-- Validation: ISO 7064 MOD 11,10 over the first 10 digits; additionally the
-  current specification encodes the Bundesland in digits 1–2 (`01`–`10`).
-  A checksum-valid number outside `01`–`10` is reported as `likely`
-  (older numbering schemes still checksum).
-- Also excluded from issuance: a digit more than twice in a row, more than
-  ten of the same digit — the detector does not enforce these secondary rules;
-  the checksum alone keeps precision high.
+- Validation: ISO 7064 MOD 11,10 **plus** the documented issuance structure.
+  The IdNr is randomly assigned and carries **no Bundesland code** (BZSt
+  „Erzeugung von Identifikationsnummern“, ELSTER/ZIVIT „Prüfung der
+  Steuer-IdNr nach § 139b AO“): the first digit is not 0, and among the
+  first ten digits exactly one digit occurs twice while exactly one digit
+  is missing (issuance until 2015) — or, since 2016, alternatively one
+  digit occurs three times (at most twice in a row) while two are missing.
+- A checksum-valid number that violates the structure (leading `0`, wrong
+  digit distribution, triple digit three times in a row) is reported as
+  `likely`, not `confirmed`: it still checksums, but was never issued that
+  way. `confirmed` therefore means „checksum **and** issuance structure“
+  for this entity.
 
 ### KVNR (Krankenversichertennummer / Krankenkassen-Nr.)
 - Format: 1 Buchstabe + 9 Ziffern, z. B. `K127508150`.
@@ -79,6 +84,10 @@ exists, but random content, no real accounts, no real people.
   vom/zur) in Namensketten werden mit erfasst.
 - Recall limit: bare surnames („… hat Müller angerufen“) are **not**
   detected. That is the price of low false positives without an NER model.
+- Half-capture: only the anchored span is replaced. „Frau Maria Schneider“
+  becomes „[NAME] Schneider“ — the first name is caught, the bare surname
+  after the anchor survives redaction. Review redacted output when full-name
+  removal matters.
 
 ## Weak entities (opt-in via `--include-weak`)
 
@@ -92,6 +101,17 @@ exists, but random content, no real accounts, no real people.
 - Klassisches Format `L01X00T471` (Buchstabe, Ziffern, Testbuchstabe,
   Seriennummer). Format-only; der nPA (2010+) nutzt andere Algorithmen,
   die ohne Datenbank nicht validierbar sind.
+
+## Dogfood guard limits
+
+The pack self-scans its shipped code (`tests/test_self_scan.py`) and fails
+when a **confirmed**-tier PII literal appears in `skills/**/*.py`. `likely`/
+`weak` entities (realistic-looking names, addresses, phone numbers) inside
+shipped scripts do not fail that guard, and `tests/` plus fixtures are
+exempt by design (the fixtures must demonstrate detection). Docs may carry
+synthetic examples, but only in files that declare „synthetic“. Regex-based
+dogfooding also cannot see obfuscated or concatenated literals — inherent
+to the approach, not a gap a stricter test could close.
 
 ## Upgrading recall with Microsoft Presidio
 

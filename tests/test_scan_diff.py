@@ -93,6 +93,42 @@ class Cli(unittest.TestCase):
         self.assertIn("***MASKED***", proc_ctx.stdout)
         self.assertNotIn("sk-live-a8f31c9d2b7e4f6a", proc_ctx.stdout)
 
+    def test_show_context_masks_pii_values_text_and_json(self):
+        # Masking is content-based: a K1 finding's context must not carry
+        # the raw PII value either — in text and in JSON output.
+        import json
+        diff = str(FIXTURES / "risky.diff")
+        proc = self._run(diff, "--show-context")
+        self.assertNotIn("DE89 3704", proc.stdout)
+        self.assertIn("[IBAN]", proc.stdout)
+        proc_json = self._run(diff, "--show-context", "--format", "json")
+        self.assertNotIn("DE89 3704", proc_json.stdout)
+        data = json.loads(proc_json.stdout)
+        for f in data:
+            self.assertNotIn("sk-live-", f.get("context", ""))
+
+    def test_show_context_masks_secrets_on_any_finding(self):
+        # A credential on a line that also matches a non-secret detector
+        # (email, IBAN) must not leak through that finding's context.
+        import json
+        diff = str(FIXTURES / "mixed.diff")
+        proc = self._run(diff, "--show-context")
+        self.assertIn("K1-PII-im-Code", proc.stdout)
+        self.assertIn("K2-Secrets", proc.stdout)
+        proc_json = self._run(diff, "--show-context", "--format", "json")
+        data = json.loads(proc_json.stdout)
+        # Detection fired on the mixed lines …
+        self.assertTrue(any(f["check"] == "K1-PII-im-Code" for f in data))
+        self.assertTrue(any(f["check"] == "K2-Secrets" for f in data))
+        # … but no raw secret or PII value is reachable in any context.
+        for blob in (proc.stdout, proc_json.stdout):
+            self.assertNotIn("s3cr3t_v4lue_x9_42", blob)
+            self.assertNotIn("hunter2secret42x", blob)
+            self.assertNotIn("sk-live-a8f31c9d2b7e4f6a", blob)
+            self.assertNotIn("DE89 3704", blob)
+            self.assertNotIn("kunde+muster@example.org", blob)
+            self.assertNotIn("ops@example.org", blob)
+
     def test_json_format(self):
         import json
         proc = self._run(str(FIXTURES / "risky.diff"), "--format", "json")

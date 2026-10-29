@@ -8,7 +8,7 @@ exhaustive — see references/entities.md for coverage and the optional
 Microsoft-Presidio upgrade path.
 
 All entity types:
-  IBAN, BIC            — bank identifiers (IBAN validated mod-97)
+  IBAN                 — bank identifier (validated mod-97)
   STEUER_ID            — Steuer-Identifikationsnummer (ISO 7064 MOD 11,10)
   KVNR                 — Krankenversichertennummer (ISO 7064 MOD 11,10)
   SVNR                 — Sozial-/Rentenversicherungsnummer (plausibility-checked)
@@ -99,18 +99,49 @@ def iso7064_mod1110_check(digits: str) -> bool:
     return (11 - p) % 10 == int(digits[-1])
 
 
-def steuer_id_is_valid(steuer_id: str) -> tuple[bool, bool]:
-    """Return (checksum_ok, bundesland_code_ok) for an 11-digit Steuer-ID.
+def _steuer_structure_reason(first_ten: str) -> str:
+    """Return "" when the first ten digits match the issuance structure, else a short reason.
 
-    Bundesland codes 01..10 in the first two digits are part of the current
-    specification; checksum-valid numbers outside 01..10 are reported as
-    ``likely`` because older or foreign-system numbering still checksums.
+    The IdNr is randomly assigned and carries no Bundesland code (BZSt "Erzeugung
+    von Identifikationsnummern"; ELSTER/ZIVIT "Prüfung der Steuer-IdNr nach
+    § 139b AO"): the first digit is not 0, and among the first ten digits either
+    exactly one digit appears twice and exactly one digit is missing (issuance
+    until 2015), or alternatively exactly one digit appears three times — at
+    most twice in a row — and exactly two digits are missing (since 2016).
+    """
+    if first_ten[0] == "0":
+        return "first digit is 0"
+    counts: dict[str, int] = {}
+    for ch in first_ten:
+        counts[ch] = counts.get(ch, 0) + 1
+    triples = [d for d, c in counts.items() if c == 3]
+    doubles = [d for d, c in counts.items() if c == 2]
+    missing = 10 - len(counts)
+    if triples:
+        if len(triples) == 1 and not doubles and missing == 2:
+            if triples[0] * 3 not in first_ten:
+                return ""
+            return "triple digit occurs three times in a row"
+        return "digit distribution matches neither issuance variant"
+    if len(doubles) == 1 and missing == 1:
+        return ""
+    return "digit distribution matches neither issuance variant"
+
+
+def steuer_id_is_valid(steuer_id: str) -> tuple[bool, bool]:
+    """Return (checksum_ok, structure_ok) for an 11-digit Steuer-IdNr.
+
+    ``structure_ok`` covers the documented issuance rules (first digit ≠ 0,
+    digit-multiplicity constraints — see :func:`_steuer_structure_reason`);
+    there is no Bundesland code. Checksum-valid numbers that violate the
+    structure are reported as ``likely`` by the detector: they still checksum,
+    but were never issued this way.
     """
     if len(steuer_id) != 11 or not steuer_id.isdigit():
         return False, False
     checksum_ok = iso7064_mod1110_check(steuer_id)
-    bundesland_ok = steuer_id[:2] in {f"{i:02d}" for i in range(1, 11)}
-    return checksum_ok, bundesland_ok
+    structure_ok = _steuer_structure_reason(steuer_id[:10]) == ""
+    return checksum_ok, structure_ok
 
 
 # KVNR: these letters are not issued (confusable letters), matching one
@@ -176,9 +207,9 @@ def _compact_ibans(text: str) -> list[Finding]:
 def _steuer_ids(text: str) -> list[Finding]:
     out: list[Finding] = []
     for m in re.finditer(r"(?<!\d)\d{11}(?!\d)", text):
-        checksum_ok, bundesland_ok = steuer_id_is_valid(m.group(0))
+        checksum_ok, structure_ok = steuer_id_is_valid(m.group(0))
         if checksum_ok:
-            conf = CONFIRMED if bundesland_ok else LIKELY
+            conf = CONFIRMED if structure_ok else LIKELY
             out.append(Finding("STEUER_ID", m.start(), m.end(), conf, m.group(0)))
     return out
 
@@ -295,8 +326,8 @@ def _street_addresses(text: str) -> list[Finding]:
 # towns ("12345 Zeichen"). Keeps PLZ_ORT false positives tolerable.
 _ORT_STOPWORDS = frozenset(
     """jahr jahre jahren euro zeichen punkte stück seiten prozent mal beispiel
-    doc pdf jpg png http https mail mails daten satz sätze code liste liste
-    version schritt schritte tage tagen wochen stunden minuten euro betrag""".split()
+    doc pdf jpg png http https mail mails daten satz sätze code liste
+    version schritt schritte tage tagen wochen stunden minuten betrag""".split()
 )
 
 

@@ -99,6 +99,49 @@ class RedactFiles(unittest.TestCase):
             # CSV structure kept
             self.assertEqual(len(content.splitlines()), 2)
 
+    def test_out_refuses_to_overwrite_input(self):
+        import subprocess
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "brief.txt"
+            src.write_text(BRIEF, encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPTS / "redact_pii.py"), str(src),
+                 "--out", str(tmp)],
+                capture_output=True, text=True,
+            )
+            # The target resolves to the input itself -> refuse loudly.
+            self.assertEqual(proc.returncode, 2)
+            self.assertIn("refusing", proc.stderr)
+            # The original survives untouched — no silent placeholder copy.
+            self.assertEqual(src.read_text(encoding="utf-8"), BRIEF)
+            self.assertEqual(list(Path(tmp).glob("*.redacted")), [])
+
+    def test_out_refuses_basename_collision(self):
+        import subprocess
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = Path(tmp) / "a"
+            a.mkdir()
+            b = Path(tmp) / "b"
+            b.mkdir()
+            (a / "data.txt").write_text("Mail: anna@example.org\n", encoding="utf-8")
+            (b / "data.txt").write_text("Mail: ben@example.org\n", encoding="utf-8")
+            out_dir = Path(tmp) / "masked"
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPTS / "redact_pii.py"),
+                 str(a / "data.txt"), str(b / "data.txt"),
+                 "--out", str(out_dir)],
+                capture_output=True, text=True,
+            )
+            # Same basename from different directories -> refuse; nothing
+            # is written (the second copy must not silently drop the first).
+            self.assertEqual(proc.returncode, 2)
+            self.assertIn("same basename", proc.stderr)
+            self.assertFalse(out_dir.exists())
+
     def test_binary_file_skipped(self):
         import subprocess
         import tempfile

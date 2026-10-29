@@ -39,10 +39,29 @@ class ChecksumAlgorithms(unittest.TestCase):
         self.assertTrue(de_pii.iso7064_mod1110_check("65929994533"))
         self.assertFalse(de_pii.iso7064_mod1110_check("02538413969"))
 
-    def test_steuer_id_confirmed_with_bundesland(self):
-        findings = de_pii.find_pii("Steuer-ID: 02538413968")
+    def test_steuer_id_confirmed_issued_structure(self):
+        # Checksum + issuance structure valid (random assignment, no
+        # Bundesland code): one digit twice, one missing, first digit != 0.
+        findings = de_pii.find_pii("Steuer-ID: 12345678995")
         self.assertEqual([(f.type, f.confidence) for f in findings],
                          [("STEUER_ID", "confirmed")])
+
+    def test_steuer_id_2016_triple_variant_confirmed(self):
+        # Since 2016 one digit may occur three times (max twice in a row).
+        findings = de_pii.find_pii("Steuer-ID: 81234568789")
+        self.assertEqual(findings[0].confidence, "confirmed")
+
+    def test_steuer_id_checksum_only_leading_zero_likely(self):
+        # Checksum-valid, but a leading 0 is never issued -> likely, not
+        # confirmed. (The old "Bundesland code 01..10" rule is not part of
+        # the specification; the IdNr carries no Länderkennzeichen.)
+        findings = de_pii.find_pii("Steuer-ID: 02538413968")
+        self.assertEqual(findings[0].confidence, "likely")
+
+    def test_steuer_id_digit_distribution_violation_likely(self):
+        # Checksum-valid, but two digits occur twice -> never issued -> likely.
+        findings = de_pii.find_pii("Steuer-ID: 11223344553")
+        self.assertEqual(findings[0].confidence, "likely")
 
     def test_steuer_id_invalid_not_detected(self):
         self.assertEqual(de_pii.find_pii("Steuer-ID: 02538413969"), [])

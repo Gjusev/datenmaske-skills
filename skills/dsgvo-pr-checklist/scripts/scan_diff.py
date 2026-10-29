@@ -143,13 +143,20 @@ def scan_diff(diff_text: str) -> list[dict]:
     return findings
 
 
-def _masked_context(content: str, check: str) -> str:
-    """Code line for --show-context; secret matches are masked."""
-    if check in _SECRET_CHECKS:
-        for _, _, pattern, _ in _SIGNALS:
-            if check in _SECRET_CHECKS:
-                content = pattern.sub("***MASKED***", content)
-        return content.strip()[:80]
+def _masked_context(content: str) -> str:
+    """Code line for --show-context. Masking is content-based, not
+    finding-based: any context line that contains a secret or a detected
+    PII value is masked the same way, no matter which checklist item
+    flagged it. A credential sitting on a line that also matches an
+    email/IBAN/phone detector must not leak through that finding's
+    context — no raw value is reachable in any output mode.
+    """
+    for check, _, pattern, _ in _SIGNALS:
+        if check in _SECRET_CHECKS:
+            content = pattern.sub("***MASKED***", content)
+    if HAS_DE_PII:
+        for f in reversed(de_pii.find_pii(content, include_weak=True, names=True)):
+            content = content[:f.start] + f"[{f.type}]" + content[f.end:]
     return content.strip()[:80]
 
 
@@ -186,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
             context_by_loc.setdefault((file, line), content)
         for f in findings:
             content = context_by_loc.get((f["file"], f["line"]), "")
-            f["context"] = _masked_context(content, f["check"])
+            f["context"] = _masked_context(content)
 
     if args.format == "json":
         print(json.dumps(findings, ensure_ascii=False, indent=2))

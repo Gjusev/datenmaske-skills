@@ -46,7 +46,10 @@ Signals map to checklist items (K1–K7, see `references/checklist.md`):
 PII in code lines (reuses the presidio-de detectors), hardcoded secrets,
 logging of personal data, migration columns that look personal, outbound
 transfers with user payloads, cookie/tracking code. `--show-context` prints
-the matched code line; without it only file/line/signal are shown.
+the matched code line with every detected secret **and** PII value masked —
+masking is content-based, so a credential is masked even when the finding
+that surfaced the line points at another checklist item. Without the flag
+only file/line/signal are shown.
 
 ### 2. Work through the checklist
 
