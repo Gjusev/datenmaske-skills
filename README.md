@@ -29,7 +29,9 @@ cp -r datenmaske-skills/skills/* .claude/skills/
 ```
 
 Das war alles — keine Abhängigkeiten, keine API-Keys, kein Netzwerk. Die
-Skills sind reine Python-Stdlib-Skripte plus Markdown-Anweisungen.
+Skills sind reine Python-Stdlib-Skripte plus Markdown-Anweisungen
+(Python ≥ 3.9-Syntax; CI-geprüft auf 3.11–3.13, denn 3.9/3.10 sind EOL
+und auf aktuellen Runner-Images nicht mehr installierbar).
 
 - **Claude Code / Codex / Cline:** Skills unter `.claude/skills/` (projekt)
   oder `~/.claude/skills/` (global) ablegen — der Agent lädt sie automatisch.

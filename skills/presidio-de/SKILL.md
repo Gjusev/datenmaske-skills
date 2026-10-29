@@ -25,7 +25,7 @@ cost of known recall gaps (documented below and in `references/entities.md`).
 
 ## Quick start
 
-Scripts are stdlib-only Python 3.9+. Run them from this skill's `scripts/`
+Scripts are stdlib-only Python (3.9+ syntax; CI-tested on 3.11-3.13). Run them from this skill's `scripts/`
 directory (or with any interpreter):
 
 ```bash
