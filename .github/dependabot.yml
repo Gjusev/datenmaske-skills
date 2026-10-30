@@ -1,0 +1,14 @@
+# Keeps GitHub Actions pin drift visible once CI lands on main.
+#
+# The pack itself is stdlib-only Python: there are no pip requirements to
+# track. The workflows do pin actions/checkout and actions/setup-python,
+# and those pins age silently like any other dependency.
+#
+# Dependabot only scans manifests on the default branch, so this file is
+# inert until skills-v0.1 (PR #1) merges. No-op today, active on merge.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
